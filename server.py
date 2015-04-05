@@ -14,6 +14,15 @@ class Point:
         self.x = x
         self.y = y
 
+    def __add__(self, other):
+        if isinstance(other, self.__class__):
+            return Point(self.x + other.x, self.y + other.y)
+        else:
+            raise TypeError("unsupported operand type(s) for +: '{}' and '{}'").format(self.__class__, type(other))
+
+    def __str__(self):
+        return "{},{}".format(self.x, self.y)
+
 @app.route('/')
 def index():
     return '<head><title>Ecoste!</title><head><body>Hai.</body>'
@@ -24,40 +33,26 @@ def test():
 
 
 @app.route('/mouseCoord/<index>')
-def mouse_coords(index):
-    ret = ""
-    points = mouse_simulation.mouse_coords
+def mouse_coords(index): #pointCpointCpointC...Cindex
+    return "C".join([str(mouse_simulation.mouse_points[i]) for i in range(int(index), len(mouse_simulation.mouse_points))]) \
+        + "C" + str(len(mouse_simulation.mouse_points))
 
-    for x in range(int(index), len(points)):
-        ret += "C" + str(points[x].x) + "," + str(points[x].y)
-
-    ret += "C" + str(len(points))
-    return ret
-
-class MouseSimulation: #Should this be creating a thread within itself instead of the user doing it themselves?
-    def __init__(self,startX, startY, mouse_speed = 3, simulation_speed = 0.1):
-        self.x = startX
-        self.y = startY
+class MouseSimulation:
+    def __init__(self, startX, startY, mouse_speed = 3, simulation_speed = 0.1):
+        self.mouse_pos = Point(startX, startY)
         self.mouse_speed = mouse_speed
         self.simulation_speed = simulation_speed
         self._kill = False
-        self.mouse_coords = [] #Mouse Simulation, not Simulator. That's why we keep track of and have an .update() function so it goes in real time.
-                               #But, maybe a Mouse Simulator with getNextCoords or something would've been better. Maybe not.
-                               #I don't know, pretty specific task so I think this is okay.
+        self.mouse_points = []
 
-        self.thread = Thread(target = self.update) #Do we even need to save the thread?
-        self.thread.start()                        #Thread(target = self.update).start() and add return thread funtction with threading.current_thread()
+        self.thread = Thread(target = self.update)
+        self.thread.start()
 
-    def update(self): #Skips the starting point. But for some reason I don't like setting the random after appending the point or adding an if.
-        while True:
-            if self._kill == True:
-                break
+    def update(self):
+        while not self._kill:
+            self.mouse_points.append(self.mouse_pos)
+            self.mouse_pos += Point(*[random.randint(-self.mouse_speed, self.mouse_speed) for _ in range(2)])
 
-            self.x += random.randint(-self.mouse_speed,self.mouse_speed)
-            self.y += random.randint(-self.mouse_speed,self.mouse_speed)
-
-            t = Point(self.x, self.y)
-            self.mouse_coords.append(t)
             sleep(self.simulation_speed)
 
     def destroy(self):
