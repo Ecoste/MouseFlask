@@ -1,13 +1,12 @@
 __author__ = 'A pen is a pen'
 
 from flask.ext.cors import CORS
-from flask import Flask
-from time import sleep
-from threading import Thread
-import random
-
-app = Flask(__name__)
-CORS(app, resources=r'/*', allow_headers='Content-Type') #
+from flask import Flask, g, session, sessions, request
+from contextlib import closing
+import mouse_simulation
+import sqlite3
+import os
+import uuid
 
 class Point:
     def __init__(self, x, y):
@@ -23,43 +22,67 @@ class Point:
     def __str__(self):
         return "{},{}".format(self.x, self.y)
 
-@app.route('/')
-def index():
-    return '<head><title>Ecoste!</title><head><body>Hai.</body>'
+app = Flask(__name__)
+app.config.from_pyfile("config.ini", silent=False)
+app.secret_key = os.urandom(24)
+CORS(app, resources=r'/*', allow_headers='Content-Type')
 
-@app.route('/test')
-def test():
-    return '<head><title>Test</title><head><body>This page is exclusively for dangerous tests only. ALSO YOU HAVE BEEN INFECTED GET FUCKED. <br> <img src="http://i.imgur.com/iFSpenr.gif" alt="Mountain View"></body>'
+@app.route('/receiveData/' , defaults={'uid': 0, 'index' : 0}, methods=['GET'])
+@app.route('/receiveData/<int:uid>=<int:index>', methods=['GET'])
+def sendData(uid, index):
+    cur = g.db.cursor()
+    cur.execute("SELECT x, y FROM points WHERE id >= {}{};".format(index, uid and " AND uid = {}".format(uid) or ""))
+    values = cur.fetchall()
+
+    return "C".join([str(Point(*values[i])) for i in range(len(values))]) #pointCpointCpointCpoint...point
+
+'''
+@app.route('/sendData/<path:data>', methods=['POST'])
+def receiveData(data): #Normal
+    def h(point):
+        cur.execute("INSERT INTO points (x, y) VALUES({},{});".format(*point.split(",")))
+        g.db.commit()
+
+    cur = g.db.cursor()
+    map(h, data.split("C"))
+    return "thx m8"
+'''
+#Tbh I have no idea if the recursive or normal one is better. I think the normal one is way easier to understand, but that might be because I've never written a recursive function before this one.
+@app.route('/sendData/<path:data>', methods=['POST'])
+def receiveData(data): #Recursive
+    cur = g.db.cursor()
+    cur.execute("INSERT INTO points (x, y) VALUES({},{});".format(*data.split("C",1)[0].split(",")))
+    g.db.commit()
+
+    if data.count("C") == 0:
+        return "Done"
+    else:
+        return receiveData(data.split("C",1)[1])
 
 
-@app.route('/mouseCoord/<index>')
-def mouse_coords(index): #pointCpointCpointC...Cindex
-    return "C".join([str(mouse_simulation.mouse_points[i]) for i in range(int(index), len(mouse_simulation.mouse_points))]) \
-        + "C" + str(len(mouse_simulation.mouse_points))
+@app.before_request
+def before_request():
+    if 'uid' not in session:
+        session['uid'] = uuid.uuid4()
+    g.db = connect_db()
 
-class MouseSimulation:
-    def __init__(self, startX, startY, mouse_speed = 3, simulation_speed = 0.1):
-        self.mouse_pos = Point(startX, startY)
-        self.mouse_speed = mouse_speed
-        self.simulation_speed = simulation_speed
-        self._kill = False
-        self.mouse_points = []
+@app.teardown_request
+def teardown_request(exception):
+    db = getattr(g, 'db', None)
+    if db is not None:
+        db.close()
 
-        self.thread = Thread(target = self.update)
-        self.thread.start()
+def init_db():
+    with closing(connect_db()) as db:
+        with app.open_resource('schema.sql', mode='r') as f:
+            db.cursor().executescript(f.read())
+        db.commit()
 
-    def update(self):
-        while not self._kill:
-            self.mouse_points.append(self.mouse_pos)
-            self.mouse_pos += Point(*[random.randint(-self.mouse_speed, self.mouse_speed) for _ in range(2)])
-
-            sleep(self.simulation_speed)
-
-    def destroy(self):
-        self._kill = True
+def connect_db():
+    return sqlite3.connect(app.config['DATABASE'])
 
 if __name__ == '__main__':
-    mouse_simulation = MouseSimulation(1600 / 2, 900 / 2)
-
-    #app.run(port=80)
-    app.run(host='0.0.0.0', port=80)
+    init_db()
+    mouse_simulation = mouse_simulation.MouseSimulation(1600 / 2, 900 / 2)
+    app.run(port=80, debug = True)
+    #app.run(host='0.0.0.0', port=80)
