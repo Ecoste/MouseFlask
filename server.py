@@ -3,6 +3,7 @@ __author__ = 'A pen is a pen'
 from flask.ext.cors import CORS
 from flask import Flask, g, session, sessions, request
 from contextlib import closing
+import mouse_simulation
 import sqlite3
 import os
 import uuid
@@ -26,7 +27,7 @@ app.config.from_pyfile("config.ini", silent=False)
 app.secret_key = os.urandom(24)
 CORS(app, resources=r'/*', allow_headers='Content-Type')
 
-#@app.route('/receiveData/' , defaults={'uid': 0, 'index' : 0}, methods=['GET']) #server_test.py shits itself because this causes a redirect.
+@app.route('/receiveData/' , defaults={'uid': 0, 'index' : 0}, methods=['GET'])
 @app.route('/receiveData/<int:uid>=<int:index>', methods=['GET'])
 def sendData(uid, index):
     cur = g.db.cursor()
@@ -48,9 +49,9 @@ def receiveData(data): #Normal
 '''
 #Tbh I have no idea if the recursive or normal one is better. I think the normal one is way easier to understand, but that might be because I've never written a recursive function before this one.
 @app.route('/sendData/<path:data>', methods=['POST'])
-def receiveData(data): #This might be vulnerable to SQL injection, alas I know nothing about it.
+def receiveData(data): #Recursive
     cur = g.db.cursor()
-    cur.execute("INSERT INTO points (uid, x, y) VALUES({}, {},{});".format(session['uid'] ,*data.split("C",1)[0].split(",")))
+    cur.execute("INSERT INTO points (x, y) VALUES({},{});".format(*data.split("C",1)[0].split(",")))
     g.db.commit()
 
     if data.count("C") == 0:
@@ -58,16 +59,11 @@ def receiveData(data): #This might be vulnerable to SQL injection, alas I know n
     else:
         return receiveData(data.split("C",1)[1])
 
-@app.route('/receiveUID', methods=['GET'])
-def sendUID():
-    return str(session['uid'])
-
 
 @app.before_request
 def before_request():
     if 'uid' not in session:
-        session['uid'] = int(str(uuid.uuid4().int)[:10]) #This line hurts.
-
+        session['uid'] = uuid.uuid4()
     g.db = connect_db()
 
 @app.teardown_request
@@ -87,5 +83,6 @@ def connect_db():
 
 if __name__ == '__main__':
     init_db()
+    mouse_simulation = mouse_simulation.MouseSimulation(1600 / 2, 900 / 2)
     app.run(port=80, debug = True)
     #app.run(host='0.0.0.0', port=80)
