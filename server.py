@@ -28,12 +28,21 @@ CORS(app, resources=r'/*', allow_headers='Content-Type')
 
 #@app.route('/receiveData/' , defaults={'uid': 0, 'index' : 0}, methods=['GET']) #server_test.py shits itself because this causes a redirect.
 @app.route('/receiveData/<int:uid>=<int:index>', methods=['GET'])
-def sendData(uid, index):
+def sendData(uid = 0, index = 0):
+    '''Maybe this is better?
+    if uid is not 0 and index is not 0:
+        pass
+    elif uid is not 0 and index is 0:
+        pass
+    elif uid is 0 and index is not 0:
+        pass
+    elif uid is 0 and index is 0:
+        pass
+    '''
     cur = g.db.cursor()
-    cur.execute("SELECT x, y FROM points WHERE id >= {}{};".format(index, uid and " AND uid = {}".format(uid) or ""))
+    cur.execute("SELECT x, y FROM points{};".format(uid and " WHERE uid = {}".format(uid) or ""))
     values = cur.fetchall()
-
-    return "C".join([str(Point(*values[i])) for i in range(len(values))]) #pointCpointCpointCpoint...point
+    return "C".join([str(Point(*values[i])) for i in range(index, len(values))])  + "C{}".format(len(values)) #pointCpointCpointCpoint...pointCindex
 
 '''
 @app.route('/sendData/<path:data>', methods=['POST'])

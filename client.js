@@ -32,21 +32,41 @@
 					mouseX = parseInt(points[0]);
 					mouseY = parseInt(points[1]);
 					
-                                        var graphics = new PIXI.Graphics(); //Why create new graphics every time? PixiJS bugs out if I don't.
-                                        graphics.lineStyle(1, 0xFFFFFF);
-                                        stage.addChild(graphics);
+                    var graphics = new PIXI.Graphics(); //Why create new graphics every time? PixiJS bugs out if I don't.
+                    graphics.lineStyle(1, 0xFFFFFF);
+                    stage.addChild(graphics);
 					graphics.drawRect(mouseX,mouseY,1,1);
 				}
 			}
 	      } 
 	   }
-	   
-           var ajaxRequest = new XMLHttpRequest();
+       var ajaxRequest = new XMLHttpRequest();
 	   ajaxRequest.onreadystatechange = ajaxFunction;
-           ajaxRequest.open("GET", "http://109.255.170.73/mouseCoord/" + indx, true);
+       ajaxRequest.open("GET", "http://127.0.0.1/receiveData/0=" + indx, true);
 	   ajaxRequest.send();
 	}
 	
+	var sendRequest = function(x, y){
+       var ajaxRequest = new XMLHttpRequest();
+       ajaxRequest.open("POST", "http://127.0.0.1/sendData/" + x + "," + y, true);
+	   ajaxRequest.send();
+	}
+	
+	pos = {
+        x: 0,
+        y: 0
+    }
+	
+	mouseRecording = new Array();
+	
+	document.addEventListener('mousemove', function(e){ 
+	    var p = pos;
+		p.x = e.clientX || e.pageX; 
+		p.y = e.clientY || e.pageY 
+		console.log("" + p.x + "," + p.y)
+		sendRequest(p.x, p.y);
+	}, false);
+	
 	var interval = setInterval(function(){
 	    makeRequest();
-	}, 5);
+	}, 50);
