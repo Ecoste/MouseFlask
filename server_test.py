@@ -4,12 +4,12 @@ import os
 import server
 import unittest
 import tempfile
+import db_manager
 
 class FlaskrTestCase(unittest.TestCase):
     def setUp(self):
         server.app.config['TESTING'] = True
         self.app = server.app.test_client()
-        server.init_db()
 
     def tearDown(self):
         pass
@@ -25,7 +25,7 @@ class FlaskrTestCase(unittest.TestCase):
         assert "Done" in rv.data.decode("utf-8")
         rv = self.receivePoints("0=0")
         assert "6,2C1,4C7,3C0,1C8,2C6,1C4,7" in rv.data.decode("utf-8")
-        rv = self.receivePoints("{}=3".format(self.receiveUID().data.decode('utf-8')))
+        rv = self.receivePoints("0=3".format(self.receiveUID().data.decode('utf-8')))
         assert "0,1C8,2C6,1C4,7" in rv.data.decode("utf-8")
 
     def receiveUID(self):
